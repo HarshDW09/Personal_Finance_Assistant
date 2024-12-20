@@ -1,10 +1,9 @@
-# backend/src/app.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
 import joblib
 from datetime import datetime
-import json
+import numpy as np
 
 app = Flask(__name__)
 CORS(app)
@@ -19,46 +18,42 @@ except:
 def health_check():
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
 
-@app.route('/predict', methods=['POST'])
+@app.route('/api/predict', methods=['POST'])
 def predict_expenses():
     try:
         data = request.json
         
-        # Convert input data to DataFrame
+        # Extract past spending and upcoming commitments
+        past_spending = data.get('past_spending', [])
+        upcoming_commitments = data.get('upcoming_commitments', [])
+        
+        # Calculate features for the model
         input_data = pd.DataFrame([{
-            'income': data['income'],
-            'month': datetime.strptime(data['date'], '%Y-%m').month,
-            'recurring_expenses': data['recurring_expenses'],
-            'past_average_spending': data['past_average_spending']
+            'income': np.mean(past_spending) if past_spending else 0,  # Use average past spending as income proxy
+            'month': datetime.now().month,
+            'recurring_expenses': sum(upcoming_commitments) if upcoming_commitments else 0,
+            'past_average_spending': np.mean(past_spending) if past_spending else 0
         }])
         
         # Make prediction
         if model:
             prediction = model.predict(input_data)[0]
-            confidence = model.predict_proba(input_data)[0].max()
+            confidence = getattr(model, 'predict_proba', lambda x: [[0.5]])(input_data)[0].max()
             
             return jsonify({
-                'predicted_expenses': round(float(prediction), 2),
-                'confidence': round(float(confidence), 2)
+                'predicted_expenses': [float(prediction)],
+                'confidence': float(confidence)
             })
         else:
+            # Fallback if model isn't loaded
+            avg_spending = np.mean(past_spending) if past_spending else 0
             return jsonify({
-                'error': 'Model not loaded',
-                'predicted_expenses': data['past_average_spending'],
+                'predicted_expenses': [float(avg_spending)],
                 'confidence': 0.5
             })
             
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
-@app.route('/expenses', methods=['POST'])
-def add_expense():
-    try:
-        data = request.json
-        # In a real app, you would save this to a database
-        return jsonify({'status': 'success', 'data': data})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host='0.0.0.0', port=5000)

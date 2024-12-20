@@ -4,12 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const FinanceAssistant = () => {
   const [pastSpending, setPastSpending] = useState(['', '', '']);
   const [upcomingCommitment, setUpcomingCommitment] = useState('');
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const spendingData = pastSpending.map((amount, index) => ({
     month: `Month ${index + 1}`,
@@ -18,8 +22,20 @@ const FinanceAssistant = () => {
 
   const handlePredict = async () => {
     setLoading(true);
+    setError(null);
+    
+    // Validate inputs
+    const validSpending = pastSpending.every(val => val !== '' && !isNaN(parseFloat(val)));
+    const validCommitment = upcomingCommitment !== '' && !isNaN(parseFloat(upcomingCommitment));
+
+    if (!validSpending || !validCommitment) {
+      setError("Please fill in all fields with valid numbers");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await fetch('http://localhost:5000/api/predict', {
+      const response = await fetch(`${API_URL}/api/predict`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -29,18 +45,31 @@ const FinanceAssistant = () => {
           upcoming_commitments: [parseFloat(upcomingCommitment)]
         }),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to get prediction');
+      }
+
       const data = await response.json();
       setPrediction(data.predicted_expenses[0]);
     } catch (error) {
       console.error('Error:', error);
+      setError("Failed to get prediction. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <h1 className="text-3xl font-bold mb-8">Personal Finance Assistant</h1>
       
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>

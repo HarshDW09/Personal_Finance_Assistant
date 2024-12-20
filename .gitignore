@@ -20,6 +20,11 @@ var/
 .installed.cfg
 *.egg
 
+# .gitignore
+node_modules/
+.env
+.env.local
+model.pkl
 # Virtual Environment
 venv/
 ENV/
@@ -31,7 +36,6 @@ ENV/
 *.swo
 
 # Node
-node_modules/
 npm-debug.log
 yarn-debug.log
 yarn-error.log
