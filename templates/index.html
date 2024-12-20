@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Finance Assistant</title>
+    <script>
+        async function predictExpenses() {
+            const pastSpending = document.getElementById("past_spending").value.split(",").map(Number);
+            const upcomingCommitments = document.getElementById("upcoming_commitments").value.split(",").map(Number);
+
+            const response = await fetch("/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ past_spending: pastSpending, upcoming_commitments: upcomingCommitments })
+            });
+
+            const data = await response.json();
+            document.getElementById("result").innerText = JSON.stringify(data, null, 2);
+        }
+    </script>
+</head>
+<body>
+    <h1>Personal Finance Assistant</h1>
+    <label>Past Spending (comma-separated):</label>
+    <input type="text" id="past_spending" /><br />
+    <label>Upcoming Commitments (comma-separated):</label>
+    <input type="text" id="upcoming_commitments" /><br />
+    <button onclick="predictExpenses()">Predict</button>
+    <pre id="result"></pre>
+</body>
+</html>
+
